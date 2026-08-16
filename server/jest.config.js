@@ -5,4 +5,6 @@ module.exports = {
   testTimeout: 30000,
   // Exclude utility files from test discovery
   testPathIgnorePatterns: ['testUtils/'],
+  // Set up env vars before any tests run (without depending on .env file)
+  setupFiles: ['<rootDir>/jest.setup.js'],
 };

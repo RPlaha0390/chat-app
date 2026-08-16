@@ -2,7 +2,6 @@
 // Keeping this separate from index.js lets tests `require('../src/app')`
 // and hit routes with Supertest against an in-memory Mongo instance,
 // with no real network port involved.
-require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { errorHandler } = require('./middleware/errorHandler');

@@ -2,6 +2,7 @@
 // Keeping this separate from index.js lets tests `require('../src/app')`
 // and hit routes with Supertest against an in-memory Mongo instance,
 // with no real network port involved.
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { errorHandler } = require('./middleware/errorHandler');
@@ -17,8 +18,7 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// Route modules get mounted here in later tasks, e.g.:
-// app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/auth', require('./routes/authRoutes'));
 
 // Must be registered last — Express only treats a 4-arg function as
 // error-handling middleware.

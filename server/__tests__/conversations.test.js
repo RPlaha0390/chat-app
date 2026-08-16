@@ -86,8 +86,17 @@ describe('GET /api/conversations/:id/messages', () => {
       .send({ memberIds: [bob.id], isGroup: false });
     const conversationId = convoRes.body.conversation._id;
 
-    // Send 3 messages so we have something to paginate.
-    for (const text of ['first', 'second', 'third']) {
+    // Send first message and verify sender is populated (critical for Socket.IO broadcast and frontend).
+    const firstMessageRes = await request(app)
+      .post(`/api/conversations/${conversationId}/messages`)
+      .set('Authorization', `Bearer ${alice.token}`)
+      .send({ text: 'first' });
+
+    expect(firstMessageRes.body.message.sender.username).toBe('alice_m');
+    expect(firstMessageRes.body.message.sender.avatarUrl).toBeDefined();
+
+    // Send remaining messages so we have something to paginate.
+    for (const text of ['second', 'third']) {
       await request(app)
         .post(`/api/conversations/${conversationId}/messages`)
         .set('Authorization', `Bearer ${alice.token}`)
@@ -101,6 +110,8 @@ describe('GET /api/conversations/:id/messages', () => {
     expect(res.status).toBe(200);
     expect(res.body.messages).toHaveLength(3);
     expect(res.body.messages[0].text).toBe('third'); // newest first
+    // Verify sender is populated in history fetch too (same populate path as sendMessage).
+    expect(res.body.messages[0].sender.username).toBe('alice_m');
   });
 
   it('rejects a non-member from reading history with 403', async () => {

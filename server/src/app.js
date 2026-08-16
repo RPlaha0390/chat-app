@@ -17,8 +17,7 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// Route modules get mounted here in later tasks, e.g.:
-// app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/auth', require('./routes/authRoutes'));
 
 // Must be registered last — Express only treats a 4-arg function as
 // error-handling middleware.

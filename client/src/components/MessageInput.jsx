@@ -9,10 +9,13 @@ const TYPING_STOP_DELAY_MS = 1500;
 export function MessageInput({ onSend, onTypingChange, onUpload }) {
   const [text, setText] = useState('');
   const [pendingAttachment, setPendingAttachment] = useState(null); // { name, url }
+  const [uploadError, setUploadError] = useState(null); // error message
   const stopTimeoutRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   function handleChange(e) {
     setText(e.target.value);
+    setUploadError(null);
     onTypingChange(true);
     clearTimeout(stopTimeoutRef.current);
     stopTimeoutRef.current = setTimeout(() => onTypingChange(false), TYPING_STOP_DELAY_MS);
@@ -21,8 +24,17 @@ export function MessageInput({ onSend, onTypingChange, onUpload }) {
   async function handleFilePick(e) {
     const file = e.target.files[0];
     if (!file || !onUpload) return;
-    const url = await onUpload(file);
-    setPendingAttachment({ name: file.name, url });
+    try {
+      setUploadError(null);
+      const url = await onUpload(file);
+      setPendingAttachment({ name: file.name, url });
+    } catch (err) {
+      setUploadError(err.message || 'Failed to upload file');
+      // Clear the file input so user can retry with the same or different file
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   }
 
   function handleKeyDown(e) {
@@ -39,11 +51,13 @@ export function MessageInput({ onSend, onTypingChange, onUpload }) {
 
   return (
     <div className="flex flex-col gap-1 p-2 border-t">
+      {uploadError && <span className="text-xs text-red-500">{uploadError}</span>}
       {pendingAttachment && <span className="text-xs text-gray-500">{pendingAttachment.name}</span>}
       <div className="flex items-center gap-2">
         <label className="cursor-pointer text-gray-500">
           📎
           <input
+            ref={fileInputRef}
             type="file"
             accept="image/*"
             aria-label="Attach an image"

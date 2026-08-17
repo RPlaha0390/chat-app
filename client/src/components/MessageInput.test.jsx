@@ -50,4 +50,24 @@ describe('MessageInput', () => {
     await userEvent.type(screen.getByPlaceholderText(/type a message/i), '{Enter}');
     expect(onSend).toHaveBeenCalledWith('', '/uploads/123-cat.png');
   });
+
+  it('shows error message when upload fails', async () => {
+    const onSend = vi.fn();
+    const onUpload = vi.fn().mockRejectedValue(new Error('Network error'));
+
+    render(<MessageInput onSend={onSend} onTypingChange={() => {}} onUpload={onUpload} />);
+
+    const file = new File(['fake image bytes'], 'cat.png', { type: 'image/png' });
+    const input = screen.getByLabelText(/attach/i);
+    await userEvent.upload(input, file);
+
+    expect(onUpload).toHaveBeenCalledWith(file);
+    expect(await screen.findByText('Network error')).toBeInTheDocument();
+
+    // User should be able to retry after error
+    expect(input.value).toBe('');
+    // Typing clears the error message
+    await userEvent.type(screen.getByPlaceholderText(/type a message/i), 'hello');
+    expect(screen.queryByText('Network error')).not.toBeInTheDocument();
+  });
 });

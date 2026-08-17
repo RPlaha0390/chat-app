@@ -30,6 +30,27 @@ describe('POST /api/auth/register', () => {
 
     expect(res.status).toBe(400);
   });
+
+  it('rejects a duplicate username with 400, not a 500 from the unique index', async () => {
+    await request(app)
+      .post('/api/auth/register')
+      .send({ username: 'dupename', email: 'dupename1@example.com', password: 'password123' });
+
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ username: 'dupename', email: 'dupename2@example.com', password: 'password123' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/already taken/i);
+  });
+
+  it('rejects a registration missing required fields with 400', async () => {
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ email: 'nousername@example.com', password: 'password123' });
+
+    expect(res.status).toBe(400);
+  });
 });
 
 describe('POST /api/auth/login', () => {

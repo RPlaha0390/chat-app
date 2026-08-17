@@ -11,13 +11,48 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
+  // True until the stored-token check below settles. Route guards must
+  // wait on this — without it a page refresh renders with user === null
+  // for a tick and redirects a perfectly valid session to /login.
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize token from localStorage on mount
+  // Restore the session from the stored token on mount. The token alone
+  // isn't enough — the rest of the app needs `user`, and only the server
+  // can tell us whether the token is still valid, so ask /api/auth/me.
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
-    if (storedToken) {
-      setToken(storedToken);
+    if (!storedToken) {
+      setIsLoading(false);
+      return;
     }
+
+    let cancelled = false;
+    setToken(storedToken);
+
+    // If a login/logout lands while this check is in flight, its result
+    // is about a token nobody is using any more — ignore it either way
+    // rather than overwriting fresher state.
+    const isStale = () => cancelled || localStorage.getItem('token') !== storedToken;
+
+    apiFetch('/api/auth/me')
+      .then((data) => {
+        if (!isStale()) setUser(data.user);
+      })
+      .catch(() => {
+        // Expired or otherwise rejected — drop it so we don't keep
+        // sending a dead token, and fall through to /login.
+        if (isStale()) return;
+        localStorage.removeItem('token');
+        setToken(null);
+        setUser(null);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const login = useCallback(async (email, password) => {
@@ -47,7 +82,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

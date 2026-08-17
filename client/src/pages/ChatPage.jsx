@@ -3,6 +3,7 @@
 // Kept deliberately thin — all the real logic already lives in, and is
 // tested in, the components and contexts it composes.
 import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { listConversations, getMessages, createConversation } from '../api/conversations';
@@ -16,8 +17,9 @@ import { TypingIndicator } from '../components/TypingIndicator';
 import { NewConversationModal } from '../components/NewConversationModal';
 
 export function ChatPage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const socket = useSocket();
+  const navigate = useNavigate();
 
   const [conversations, setConversations] = useState([]);
   const [activeId, setActiveId] = useState(null);
@@ -29,9 +31,27 @@ export function ChatPage() {
 
   const activeConversation = conversations.find((c) => c._id === activeId) ?? null;
 
-  useEffect(() => {
-    listConversations().then((data) => setConversations(data.conversations));
+  // listConversations populates each member's isOnline, which is the only
+  // way to know who was *already* online when this tab loaded —
+  // presence:update only ever reports changes from here on. Applied as a
+  // merge so a later refresh can't stomp deltas that arrived meanwhile.
+  const applyConversations = useCallback((list) => {
+    setConversations(list);
+    setOnlineUserIds((prev) => {
+      const next = new Set(prev);
+      for (const conversation of list) {
+        for (const member of conversation.members ?? []) {
+          if (member.isOnline) next.add(member._id);
+          else next.delete(member._id);
+        }
+      }
+      return next;
+    });
   }, []);
+
+  useEffect(() => {
+    listConversations().then((data) => applyConversations(data.conversations));
+  }, [applyConversations]);
 
   // Loaded once so the "New conversation" picker has options ready the
   // moment it opens, rather than fetching on every open.
@@ -47,20 +67,27 @@ export function ChatPage() {
     );
   }, []);
 
-  const handleCreateConversation = useCallback(async ({ memberIds, isGroup, name }) => {
-    const { conversation } = await createConversation({ memberIds, isGroup, name });
-    // Re-fetch rather than locally appending: the new conversation's
-    // members need to be populated the same way listConversations
-    // already returns them (username/avatarUrl/isOnline/lastSeen), and
-    // createConversation's response doesn't populate that.
-    const { conversations: refreshed } = await listConversations();
-    setConversations(refreshed);
-    setActiveId(conversation._id);
-    setShowNewConversationModal(false);
-  }, []);
+  const handleCreateConversation = useCallback(
+    async ({ memberIds, isGroup, name }) => {
+      const { conversation } = await createConversation({ memberIds, isGroup, name });
+      // Re-fetch rather than locally appending: the new conversation's
+      // members need to be populated the same way listConversations
+      // already returns them (username/avatarUrl/isOnline/lastSeen), and
+      // createConversation's response doesn't populate that.
+      const { conversations: refreshed } = await listConversations();
+      applyConversations(refreshed);
+      setActiveId(conversation._id);
+      setShowNewConversationModal(false);
+    },
+    [applyConversations]
+  );
 
   useEffect(() => {
     if (!activeId) return;
+    // Typing state is per-conversation and ephemeral — carrying it across
+    // a switch would show whoever was mid-sentence in the old thread as
+    // typing in the new one.
+    setTypingUserIds(new Set());
     getMessages(activeId).then((data) => setMessages(data.messages.reverse()));
   }, [activeId]);
 
@@ -81,7 +108,12 @@ export function ChatPage() {
       });
     }
 
-    function handleTyping({ userId, isTyping }) {
+    function handleTyping({ conversationId, userId, isTyping }) {
+      // A socket can be in several conversation rooms at once, so a
+      // typing event has to be matched to the thread on screen —
+      // otherwise someone typing in another shared conversation shows up
+      // as typing in this one.
+      if (conversationId !== activeId) return;
       setTypingUserIds((prev) => {
         const next = new Set(prev);
         isTyping ? next.add(userId) : next.delete(userId);
@@ -103,6 +135,17 @@ export function ChatPage() {
   useEffect(() => {
     if (!socket || !activeId) return;
     socket.emit('join', { conversationId: activeId });
+    return () => {
+      // Clear our typing flag first: once we've left the room the server
+      // stops relaying our typing events, so a pending "stopped typing"
+      // would never land and we'd stay stuck as "typing..." for everyone
+      // else in the conversation we just walked away from.
+      socket.emit('typing:stop', { conversationId: activeId });
+      // Then leave, otherwise rooms accumulate for the life of the
+      // connection and every conversation ever opened keeps pushing
+      // events at this client.
+      socket.emit('leave', { conversationId: activeId });
+    };
   }, [socket, activeId]);
 
   const handleSend = useCallback(
@@ -121,6 +164,14 @@ export function ChatPage() {
     [socket, activeId]
   );
 
+  const handleLogout = useCallback(() => {
+    // Clearing `user` also tears down the socket (SocketProvider keys off
+    // it), so navigating afterwards lands on /login with no live
+    // connection left behind.
+    logout();
+    navigate('/login', { replace: true });
+  }, [logout, navigate]);
+
   const typingUsernames = activeConversation
     ? activeConversation.members
         .filter((m) => m._id !== user.id && typingUserIds.has(m._id))
@@ -130,9 +181,20 @@ export function ChatPage() {
   return (
     <div className="flex h-screen">
       <aside className="w-72 border-r overflow-y-auto flex flex-col">
+        <div className="flex items-center justify-between gap-2 m-2">
+          <span className="truncate text-sm font-medium" title={user.username}>
+            {user.username}
+          </span>
+          <button
+            onClick={handleLogout}
+            className="text-sm text-gray-600 hover:text-gray-900 underline shrink-0"
+          >
+            Log out
+          </button>
+        </div>
         <button
           onClick={() => setShowNewConversationModal(true)}
-          className="m-2 bg-blue-600 text-white rounded px-3 py-2"
+          className="mx-2 mb-2 bg-blue-600 text-white rounded px-3 py-2"
         >
           New conversation
         </button>

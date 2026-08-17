@@ -46,6 +46,75 @@ describe('POST /api/conversations', () => {
     expect(res.body.conversation.members).toHaveLength(3); // includes creator
   });
 
+  it('returns the existing DM instead of creating a duplicate', async () => {
+    const alice = await registerUser('alice_d');
+    const bob = await registerUser('bob_d');
+
+    const first = await request(app)
+      .post('/api/conversations')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .send({ memberIds: [bob.id], isGroup: false });
+
+    const second = await request(app)
+      .post('/api/conversations')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .send({ memberIds: [bob.id], isGroup: false });
+
+    expect(second.body.conversation._id).toBe(first.body.conversation._id);
+
+    // ...and from the other side of the DM too, where the member order differs.
+    const reverse = await request(app)
+      .post('/api/conversations')
+      .set('Authorization', `Bearer ${bob.token}`)
+      .send({ memberIds: [alice.id], isGroup: false });
+    expect(reverse.body.conversation._id).toBe(first.body.conversation._id);
+
+    const list = await request(app)
+      .get('/api/conversations')
+      .set('Authorization', `Bearer ${alice.token}`);
+    expect(list.body.conversations).toHaveLength(1);
+  });
+
+  it('still creates a separate group even when the same two members already have a DM', async () => {
+    const alice = await registerUser('alice_dg');
+    const bob = await registerUser('bob_dg');
+
+    const dm = await request(app)
+      .post('/api/conversations')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .send({ memberIds: [bob.id], isGroup: false });
+
+    const group = await request(app)
+      .post('/api/conversations')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .send({ memberIds: [bob.id], isGroup: true, name: 'Just us' });
+
+    expect(group.status).toBe(201);
+    expect(group.body.conversation._id).not.toBe(dm.body.conversation._id);
+  });
+
+  it('rejects memberIds that do not correspond to real users with 400', async () => {
+    const alice = await registerUser('alice_v');
+
+    const res = await request(app)
+      .post('/api/conversations')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .send({ memberIds: ['64b7f0c1c1c1c1c1c1c1c1c1'], isGroup: false });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects a malformed member id with 400 rather than 500', async () => {
+    const alice = await registerUser('alice_v2');
+
+    const res = await request(app)
+      .post('/api/conversations')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .send({ memberIds: ['not-an-object-id'], isGroup: false });
+
+    expect(res.status).toBe(400);
+  });
+
   it('rejects an unauthenticated request with 401', async () => {
     const res = await request(app).post('/api/conversations').send({ memberIds: [], isGroup: false });
     expect(res.status).toBe(401);
@@ -129,6 +198,32 @@ describe('GET /api/conversations/:id/messages', () => {
       .set('Authorization', `Bearer ${stranger.token}`);
 
     expect(res.status).toBe(403);
+  });
+
+  it('rejects a malformed conversation id with 400 rather than 500', async () => {
+    const alice = await registerUser('alice_m3');
+
+    const res = await request(app)
+      .get('/api/conversations/garbage/messages')
+      .set('Authorization', `Bearer ${alice.token}`);
+
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects a malformed ?before cursor with 400 rather than 500', async () => {
+    const alice = await registerUser('alice_m4');
+    const bob = await registerUser('bob_m4');
+
+    const convoRes = await request(app)
+      .post('/api/conversations')
+      .set('Authorization', `Bearer ${alice.token}`)
+      .send({ memberIds: [bob.id], isGroup: false });
+
+    const res = await request(app)
+      .get(`/api/conversations/${convoRes.body.conversation._id}/messages?before=garbage`)
+      .set('Authorization', `Bearer ${alice.token}`);
+
+    expect(res.status).toBe(400);
   });
 });
 

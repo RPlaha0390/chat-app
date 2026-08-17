@@ -5,8 +5,15 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ChatPage } from './pages/ChatPage';
 
-function RequireAuth({ children }) {
-  const { user } = useAuth();
+// Exported so the redirect-vs-wait decision can be tested directly —
+// mounting the whole App would drag in a real Socket.IO connection.
+export function RequireAuth({ children }) {
+  const { user, isLoading } = useAuth();
+  // Don't decide anything while the stored token is still being checked
+  // — redirecting here would bounce a valid session out on every refresh.
+  if (isLoading) {
+    return <div className="flex h-screen items-center justify-center text-gray-500">Loading…</div>;
+  }
   return user ? children : <Navigate to="/login" replace />;
 }
 

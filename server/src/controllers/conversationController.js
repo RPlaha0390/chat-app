@@ -4,6 +4,7 @@
 // persistence logic instead of duplicating it, per the spec.
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
+const User = require('../models/User');
 const { asyncHandler } = require('../utils/asyncHandler');
 
 const PAGE_SIZE = 30;
@@ -11,8 +12,40 @@ const PAGE_SIZE = 30;
 const createConversation = asyncHandler(async (req, res) => {
   const { memberIds, isGroup, name } = req.body;
 
+  if (!Array.isArray(memberIds)) {
+    const err = new Error('memberIds must be an array of user ids');
+    err.status = 400;
+    throw err;
+  }
+
+  // Don't take the client's word that these ids are real accounts —
+  // without this, a conversation can be created containing arbitrary
+  // ObjectIds that never resolve to a user when members are populated.
+  // (A malformed id throws a CastError here, which errorHandler maps
+  // to a 400 too.)
+  const requestedIds = Array.from(new Set(memberIds.map(String)));
+  const existingCount = await User.countDocuments({ _id: { $in: requestedIds } });
+  if (existingCount !== requestedIds.length) {
+    const err = new Error('One or more members do not exist');
+    err.status = 400;
+    throw err;
+  }
+
   // The creator is always a member, even if the client forgot to include them.
-  const members = Array.from(new Set([req.userId, ...memberIds]));
+  const members = Array.from(new Set([req.userId, ...requestedIds]));
+
+  // A DM is identified by its pair of members, not by an id the client
+  // holds — so picking the same person twice must land back in the same
+  // conversation rather than forking history into a second one.
+  if (!isGroup && members.length === 2) {
+    const existing = await Conversation.findOne({
+      isGroup: false,
+      members: { $all: members, $size: 2 },
+    });
+    if (existing) {
+      return res.status(200).json({ conversation: existing });
+    }
+  }
 
   const conversation = await Conversation.create({
     isGroup: !!isGroup,

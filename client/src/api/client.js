@@ -25,3 +25,19 @@ export async function apiFetch(path, options = {}) {
 
   return body;
 }
+
+// Attachment URLs are stored server-relative (`/uploads/<file>`) so the
+// stored value stays origin-independent — important for the Cloudinary
+// swap the design spec anticipates. But the API lives on a different
+// origin than the client in dev, so rendering that path directly in an
+// <img src> would resolve it against the *client* origin and 404.
+// Resolve it against the API origin at render time instead.
+export function resolveAssetUrl(path) {
+  if (!path) return path;
+  // Already absolute (e.g. a future Cloudinary URL) — leave it alone.
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(path) || path.startsWith('//')) return path;
+  // No configured API origin (e.g. same-origin deployment) — the
+  // server-relative path is already correct.
+  if (!BASE_URL) return path;
+  return new URL(path, BASE_URL).href;
+}

@@ -21,6 +21,9 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/conversations', require('./routes/conversationRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 
+app.use('/uploads', express.static(require('path').join(__dirname, 'uploads')));
+app.use('/api/upload', require('./routes/uploadRoutes'));
+
 // Must be registered last — Express only treats a 4-arg function as
 // error-handling middleware.
 app.use(errorHandler);

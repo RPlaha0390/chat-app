@@ -1,10 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { SocketProvider } from './context/SocketContext';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { ChatPage } from './pages/ChatPage';
 
-// Redirects to /login if there's no logged-in user yet. ChatPage
-// (Task 9) will be the element this wraps.
 function RequireAuth({ children }) {
   const { user } = useAuth();
   return user ? children : <Navigate to="/login" replace />;
@@ -19,7 +19,7 @@ function AppRoutes() {
         path="/"
         element={
           <RequireAuth>
-            <div className="p-8">Chat UI goes here (Task 9)</div>
+            <ChatPage />
           </RequireAuth>
         }
       />
@@ -30,11 +30,11 @@ function AppRoutes() {
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <div className="min-h-screen bg-gray-50">
+      <SocketProvider>
+        <BrowserRouter>
           <AppRoutes />
-        </div>
-      </BrowserRouter>
+        </BrowserRouter>
+      </SocketProvider>
     </AuthProvider>
   );
 }

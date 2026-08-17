@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { listConversations, getMessages, createConversation } from '../api/conversations';
 import { listUsers } from '../api/users';
+import { uploadFile } from '../api/upload';
 import { ConversationList } from '../components/ConversationList';
 import { ConversationHeader } from '../components/ConversationHeader';
 import { MessageList } from '../components/MessageList';
@@ -105,9 +106,9 @@ export function ChatPage() {
   }, [socket, activeId]);
 
   const handleSend = useCallback(
-    (text) => {
+    (text, attachmentUrl) => {
       if (!socket || !activeId) return;
-      socket.emit('message:send', { conversationId: activeId, text });
+      socket.emit('message:send', { conversationId: activeId, text, attachmentUrl });
     },
     [socket, activeId]
   );
@@ -159,7 +160,9 @@ export function ChatPage() {
           }}
         />
         <TypingIndicator typingUsernames={typingUsernames} />
-        {activeId && <MessageInput onSend={handleSend} onTypingChange={handleTypingChange} />}
+        {activeId && (
+          <MessageInput onSend={handleSend} onTypingChange={handleTypingChange} onUpload={uploadFile} />
+        )}
       </main>
 
       {showNewConversationModal && (

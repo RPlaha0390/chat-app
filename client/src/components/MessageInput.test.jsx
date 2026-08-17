@@ -14,7 +14,7 @@ describe('MessageInput', () => {
     const input = screen.getByPlaceholderText(/type a message/i);
     await userEvent.type(input, 'hello there{Enter}');
 
-    expect(onSend).toHaveBeenCalledWith('hello there');
+    expect(onSend).toHaveBeenCalledWith('hello there', undefined);
     expect(input.value).toBe('');
   });
 
@@ -32,5 +32,22 @@ describe('MessageInput', () => {
 
     await userEvent.type(screen.getByPlaceholderText(/type a message/i), 'h');
     expect(onTypingChange).toHaveBeenCalledWith(true);
+  });
+
+  it('calls onSend with an attachment url after picking a file', async () => {
+    const onSend = vi.fn();
+    const onUpload = vi.fn().mockResolvedValue('/uploads/123-cat.png');
+
+    render(<MessageInput onSend={onSend} onTypingChange={() => {}} onUpload={onUpload} />);
+
+    const file = new File(['fake image bytes'], 'cat.png', { type: 'image/png' });
+    const input = screen.getByLabelText(/attach/i);
+    await userEvent.upload(input, file);
+
+    expect(onUpload).toHaveBeenCalledWith(file);
+    expect(await screen.findByText(/cat.png/)).toBeInTheDocument(); // shows a pending-attachment preview
+
+    await userEvent.type(screen.getByPlaceholderText(/type a message/i), '{Enter}');
+    expect(onSend).toHaveBeenCalledWith('', '/uploads/123-cat.png');
   });
 });

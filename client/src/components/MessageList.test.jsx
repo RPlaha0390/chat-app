@@ -23,6 +23,23 @@ describe('MessageList', () => {
     expect(screen.getByText('hello').closest('[data-own]').getAttribute('data-own')).toBe('false');
   });
 
+  it('renders an attachment against the API origin, not the page origin', () => {
+    const withAttachment = [
+      {
+        _id: '3',
+        text: 'look',
+        sender: { _id: 'u2', username: 'bob' },
+        attachment: { url: '/uploads/123-cat.png' },
+        createdAt: new Date().toISOString(),
+      },
+    ];
+    render(<MessageList messages={withAttachment} currentUserId="u1" onLoadMore={() => {}} />);
+    expect(screen.getByAltText('attachment')).toHaveAttribute(
+      'src',
+      'http://localhost:5000/uploads/123-cat.png'
+    );
+  });
+
   it('calls onLoadMore when scrolled to the top', () => {
     const onLoadMore = vi.fn();
     const { container } = render(

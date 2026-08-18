@@ -6,6 +6,10 @@ services:
     buildCommand: npm install
     startCommand: npm start
     plan: free
+    # Render health-checks "/" by default, which this app doesn't serve —
+    # only /api/health does. A failing default check can make Render mark
+    # an otherwise-running service unhealthy and stop routing traffic to it.
+    healthCheckPath: /api/health
     envVars:
       - key: CLIENT_ORIGIN
         value: https://rplaha0390.github.io/chat-app

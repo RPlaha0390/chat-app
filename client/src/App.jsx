@@ -38,7 +38,10 @@ function App() {
   return (
     <AuthProvider>
       <SocketProvider>
-        <BrowserRouter>
+        {/* basename matches vite.config.js's `base` — GitHub Pages serves
+            this app from /chat-app/, so routes must be computed relative
+            to that, not the domain root. */}
+        <BrowserRouter basename="/chat-app/">
           <AppRoutes />
         </BrowserRouter>
       </SocketProvider>

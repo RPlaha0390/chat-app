@@ -12,7 +12,12 @@ services:
     healthCheckPath: /api/health
     envVars:
       - key: CLIENT_ORIGIN
-        value: https://rplaha0390.github.io/chat-app
+        # CORS's Access-Control-Allow-Origin must be an origin only
+        # (scheme + host), never a path — GitHub Pages serves this app at
+        # https://rplaha0390.github.io/chat-app/, but the origin is just
+        # https://rplaha0390.github.io. A path here makes browsers reject
+        # the CORS response outright.
+        value: https://rplaha0390.github.io
       - key: MONGO_URI
         sync: false
       - key: JWT_SECRET

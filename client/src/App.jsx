@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
+import { ThemeProvider } from './context/ThemeContext';
+import { LoadingDots } from './components/LoadingDots';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ChatPage } from './pages/ChatPage';
@@ -12,7 +14,11 @@ export function RequireAuth({ children }) {
   // Don't decide anything while the stored token is still being checked
   // — redirecting here would bounce a valid session out on every refresh.
   if (isLoading) {
-    return <div className="flex h-screen items-center justify-center text-gray-500">Loading…</div>;
+    return (
+      <div className="flex h-screen items-center justify-center text-ink/50 dark:text-ink-dark/50">
+        <LoadingDots />
+      </div>
+    );
   }
   return user ? children : <Navigate to="/login" replace />;
 }
@@ -36,16 +42,18 @@ function AppRoutes() {
 
 function App() {
   return (
-    <AuthProvider>
-      <SocketProvider>
-        {/* basename matches vite.config.js's `base` — GitHub Pages serves
-            this app from /chat-app/, so routes must be computed relative
-            to that, not the domain root. */}
-        <BrowserRouter basename="/chat-app/">
-          <AppRoutes />
-        </BrowserRouter>
-      </SocketProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <SocketProvider>
+          {/* basename matches vite.config.js's `base` — GitHub Pages serves
+              this app from /chat-app/, so routes must be computed relative
+              to that, not the domain root. */}
+          <BrowserRouter basename="/chat-app/">
+            <AppRoutes />
+          </BrowserRouter>
+        </SocketProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

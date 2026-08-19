@@ -5,6 +5,7 @@ import { vi, describe, it, expect } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { RegisterPage } from './RegisterPage';
 import { useAuth } from '../context/AuthContext';
+import { ThemeProvider } from '../context/ThemeContext';
 
 vi.mock('../context/AuthContext', () => ({ useAuth: vi.fn() }));
 
@@ -14,9 +15,11 @@ describe('RegisterPage', () => {
     useAuth.mockReturnValue({ register });
 
     render(
-      <MemoryRouter>
-        <RegisterPage />
-      </MemoryRouter>
+      <ThemeProvider>
+        <MemoryRouter>
+          <RegisterPage />
+        </MemoryRouter>
+      </ThemeProvider>
     );
     await userEvent.type(screen.getByLabelText(/username/i), 'alice');
     await userEvent.type(screen.getByLabelText(/email/i), 'alice@example.com');
@@ -31,9 +34,11 @@ describe('RegisterPage', () => {
     useAuth.mockReturnValue({ register });
 
     render(
-      <MemoryRouter>
-        <RegisterPage />
-      </MemoryRouter>
+      <ThemeProvider>
+        <MemoryRouter>
+          <RegisterPage />
+        </MemoryRouter>
+      </ThemeProvider>
     );
     await userEvent.type(screen.getByLabelText(/username/i), 'alice');
     await userEvent.type(screen.getByLabelText(/email/i), 'dupe@example.com');

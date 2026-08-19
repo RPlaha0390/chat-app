@@ -15,6 +15,9 @@ import { MessageList } from '../components/MessageList';
 import { MessageInput } from '../components/MessageInput';
 import { TypingIndicator } from '../components/TypingIndicator';
 import { NewConversationModal } from '../components/NewConversationModal';
+import { LoadingDots } from '../components/LoadingDots';
+import { Button } from '../components/Button';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 export function ChatPage() {
   const { user, logout } = useAuth();
@@ -22,6 +25,7 @@ export function ChatPage() {
   const navigate = useNavigate();
 
   const [conversations, setConversations] = useState([]);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(true);
   const [activeId, setActiveId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [onlineUserIds, setOnlineUserIds] = useState(new Set());
@@ -50,7 +54,9 @@ export function ChatPage() {
   }, []);
 
   useEffect(() => {
-    listConversations().then((data) => applyConversations(data.conversations));
+    listConversations()
+      .then((data) => applyConversations(data.conversations))
+      .finally(() => setIsLoadingConversations(false));
   }, [applyConversations]);
 
   // Loaded once so the "New conversation" picker has options ready the
@@ -179,30 +185,38 @@ export function ChatPage() {
     : [];
 
   return (
-    <div className="flex h-screen">
-      <aside className="w-72 border-r overflow-y-auto flex flex-col">
-        <div className="flex items-center justify-between gap-2 m-2">
-          <span className="truncate text-sm font-medium" title={user.username}>
+    <div className="flex h-screen bg-surface dark:bg-surface-dark">
+      <aside className="w-72 border-r border-black/5 dark:border-white/5 overflow-y-auto flex flex-col">
+        <div className="flex items-center justify-between gap-2 px-3 py-3">
+          <span className="truncate font-display font-medium text-ink dark:text-ink-dark" title={user.username}>
             {user.username}
           </span>
-          <button
-            onClick={handleLogout}
-            className="text-sm text-gray-600 hover:text-gray-900 underline shrink-0"
-          >
-            Log out
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            <ThemeToggle />
+            <button
+              onClick={handleLogout}
+              className="text-sm text-ink/50 dark:text-ink-dark/50 hover:text-ink dark:hover:text-ink-dark px-2 py-1"
+            >
+              Log out
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => setShowNewConversationModal(true)}
-          className="mx-2 mb-2 bg-blue-600 text-white rounded px-3 py-2"
-        >
+        <Button onClick={() => setShowNewConversationModal(true)} className="mx-3 mb-3">
           New conversation
-        </button>
-        <ConversationList
-          conversations={conversations}
-          currentUserId={user.id}
-          onSelect={setActiveId}
-        />
+        </Button>
+        {isLoadingConversations ? (
+          <div className="flex items-center justify-center py-8 text-ink/40 dark:text-ink-dark/40">
+            <LoadingDots />
+          </div>
+        ) : (
+          <ConversationList
+            conversations={conversations}
+            currentUserId={user.id}
+            onSelect={setActiveId}
+            activeId={activeId}
+            onlineUserIds={onlineUserIds}
+          />
+        )}
       </aside>
 
       <main className="flex-1 flex flex-col">

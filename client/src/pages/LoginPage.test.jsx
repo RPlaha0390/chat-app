@@ -6,6 +6,7 @@ import { vi, describe, it, expect } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { LoginPage } from './LoginPage';
 import { useAuth } from '../context/AuthContext';
+import { ThemeProvider } from '../context/ThemeContext';
 
 vi.mock('../context/AuthContext', () => ({ useAuth: vi.fn() }));
 
@@ -15,9 +16,11 @@ describe('LoginPage', () => {
     useAuth.mockReturnValue({ login });
 
     render(
-      <MemoryRouter>
-        <LoginPage />
-      </MemoryRouter>
+      <ThemeProvider>
+        <MemoryRouter>
+          <LoginPage />
+        </MemoryRouter>
+      </ThemeProvider>
     );
     await userEvent.type(screen.getByLabelText(/email/i), 'alice@example.com');
     await userEvent.type(screen.getByLabelText(/password/i), 'password123');
@@ -31,9 +34,11 @@ describe('LoginPage', () => {
     useAuth.mockReturnValue({ login });
 
     render(
-      <MemoryRouter>
-        <LoginPage />
-      </MemoryRouter>
+      <ThemeProvider>
+        <MemoryRouter>
+          <LoginPage />
+        </MemoryRouter>
+      </ThemeProvider>
     );
     await userEvent.type(screen.getByLabelText(/email/i), 'alice@example.com');
     await userEvent.type(screen.getByLabelText(/password/i), 'wrong');

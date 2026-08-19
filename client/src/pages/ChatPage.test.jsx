@@ -21,6 +21,7 @@ import { listConversations, getMessages } from '../api/conversations';
 import { listUsers } from '../api/users';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
+import { ThemeProvider } from '../context/ThemeContext';
 import { ChatPage } from './ChatPage';
 
 const ME = { id: 'me', username: 'alice' };
@@ -81,12 +82,14 @@ beforeEach(() => {
 
 function renderChatPage() {
   return render(
-    <MemoryRouter initialEntries={['/']}>
-      <Routes>
-        <Route path="/" element={<ChatPage />} />
-        <Route path="/login" element={<p>login page</p>} />
-      </Routes>
-    </MemoryRouter>
+    <ThemeProvider>
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route path="/" element={<ChatPage />} />
+          <Route path="/login" element={<p>login page</p>} />
+        </Routes>
+      </MemoryRouter>
+    </ThemeProvider>
   );
 }
 
